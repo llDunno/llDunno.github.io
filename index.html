@@ -1,0 +1,133 @@
+html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TORMAX Door Configurator Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 15px; background: #e32321; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>TORMAX Door Configurator Test</h1>
+    
+    <div id="odoo-data" class="form-group">
+        <h3>Odoo Data (Simulated URL Parameters)</h3>
+        <div id="params-display">Loading...</div>
+    </div>
+    
+    <div class="form-group">
+        <label for="door-series">Door Series</label>
+        <select id="door-series">
+            <option value="tx9200">TX9200 - Fixed Sidelite Slider</option>
+            <option value="tx9300">TX9300 - Full Breakout Slider</option>
+            <option value="tx9400">TX9400 - Telescoping Slider</option>
+            <option value="tx9500">TX9500 - All Glass Slider</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="configuration">Configuration Type</label>
+        <select id="configuration">
+            <option value="single-slide">Single Slide (O-SX or P-SX)</option>
+            <option value="bi-parting">Bi-Parting (O-SX-SX-O)</option>
+            <option value="single-breakout">Single Full Breakout (SO-SX)</option>
+            <option value="bi-part-breakout">Bi-Part Full Breakout (SO-SX-SX-SO)</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="finish">Finish</label>
+        <select id="finish">
+            <option value="clear">Clear</option>
+            <option value="dark-bronze">Dark Bronze</option>
+            <option value="black">Black</option>
+        </select>
+    </div>
+    
+    <button id="submit-btn">Submit Configuration</button>
+    
+    <div class="result" id="result" style="display: none;"></div>
+    
+    <script>
+        // Parse URL parameters (simulating data from Odoo)
+        function getUrlParams() {
+            const params = {};
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+            
+            for (const [key, value] of urlParams.entries()) {
+                params[key] = value;
+            }
+            
+            return params;
+        }
+        
+        // Display the parameters
+        const params = getUrlParams();
+        const paramsDisplay = document.getElementById('params-display');
+        
+        if (Object.keys(params).length > 0) {
+            let paramsHtml = '<ul>';
+            for (const [key, value] of Object.entries(params)) {
+                paramsHtml += `<li><strong>${key}:</strong> ${value}</li>`;
+            }
+            paramsHtml += '</ul>';
+            paramsDisplay.innerHTML = paramsHtml;
+        } else {
+            paramsDisplay.innerHTML = 'No parameters found. <a href="?sale_id=123&company=Test+Company&salesperson=John+Doe&product=45">Add test parameters</a>';
+        }
+        
+        // Handle form submission
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            // Get form values
+            const doorSeries = document.getElementById('door-series').value;
+            const configuration = document.getElementById('configuration').value;
+            const finish = document.getElementById('finish').value;
+            
+            // Combine with the URL parameters
+            const configData = {
+                ...params,  // Include the original params from Odoo
+                doorSeries: doorSeries,
+                configuration: configuration,
+                finish: finish,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Send to our webhook
+            fetch('https://your-webhook-url/receive-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(configData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Show the result
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <h3>Configuration Sent Successfully!</h3>
+                    <p>Configuration ID: ${data.config_id}</p>
+                    <p>Message: ${data.message}</p>
+                    <pre>${JSON.stringify(configData, null, 2)}</pre>
+                `;
+                resultDiv.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <h3>Error Sending Configuration</h3>
+                    <p>${error.message || 'Unknown error occurred'}</p>
+                `;
+                resultDiv.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>
